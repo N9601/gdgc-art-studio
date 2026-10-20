@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../auth.jsx';
+import AuthLayout from '../components/AuthLayout.jsx';
 import { Field, Notice } from '../components/ui.jsx';
 
 export default function Signup() {
@@ -28,22 +29,25 @@ export default function Signup() {
   }
 
   return (
-    <section className="auth-card">
-      <h1>Create an account</h1>
-      <Notice notice={notice} onClose={() => setNotice(null)} />
+    <AuthLayout>
+      <div>
+        <h1>Create your account</h1>
+        <p className="subtitle">It takes a few seconds. No card needed.</p>
+      </div>
+      <Notice notice={notice} onClose={() => setNotice(null)} inline />
       <form onSubmit={submit} className="form">
-        <Field label="Name" error={errors.name}>
-          <input value={form.name} onChange={set('name')} required autoComplete="name" />
+        <Field label="Full name" error={errors.name}>
+          <input value={form.name} onChange={set('name')} required autoComplete="name" placeholder="Asha Rao" />
         </Field>
         <Field label="Email" error={errors.email}>
-          <input type="email" value={form.email} onChange={set('email')} required autoComplete="email" />
+          <input type="email" value={form.email} onChange={set('email')} required autoComplete="email" placeholder="you@example.com" />
         </Field>
         <Field label="Password" error={errors.password} hint="At least 8 characters.">
           <input type="password" value={form.password} onChange={set('password')} required minLength={8} autoComplete="new-password" />
         </Field>
-        <button type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Sign up'}</button>
+        <button type="submit" className="block" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
       </form>
-      <p className="muted">Already have an account? <Link to="/login">Log in</Link></p>
-    </section>
+      <p className="auth-foot">Already have an account? <Link to="/login">Log in</Link></p>
+    </AuthLayout>
   );
 }

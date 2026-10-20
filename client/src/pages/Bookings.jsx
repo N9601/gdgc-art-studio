@@ -1,14 +1,28 @@
 import { useState } from 'react';
 import { api, useApi } from '../api.js';
 import { useAuth } from '../auth.jsx';
-import { AsyncView, Field, Notice, StatusBadge } from '../components/ui.jsx';
-import { addDays, money, niceDate } from '../format.js';
+import Icon from '../components/Icon.jsx';
+import { AsyncView, Empty, Field, Notice, PageHeader, StatusBadge, Tabs } from '../components/ui.jsx';
+import { addDays, dateParts, money, niceDate } from '../format.js';
 
 const STATUSES = ['requested', 'confirmed', 'declined', 'cancelled'];
 
 export default function Bookings() {
   const { user } = useAuth();
   return user.role === 'studio' ? <StudioBookings /> : <CustomerBookings />;
+}
+
+export function DateTile({ date }) {
+  const { month, day } = dateParts(date);
+  return <div className="date-tile" aria-hidden="true"><span>{month}</span><strong>{day}</strong></div>;
+}
+
+// Status tabs with counts, shared by the studio's bookings and pottery pages.
+export function statusTabs(items, statuses) {
+  return [
+    ...statuses.map((s) => ({ value: s, label: s, count: items.filter((i) => i.status === s).length })),
+    { value: 'all', label: 'All', count: items.length },
+  ];
 }
 
 // ---------------------------------------------------------------- customer
@@ -26,7 +40,7 @@ function CustomerBookings() {
     setNotice(null);
     try {
       await api(`/bookings/${b.id}/cancel`, { method: 'POST' });
-      setNotice({ kind: 'success', text: 'Booking cancelled.' });
+      setNotice({ kind: 'success', text: 'Booking cancelled. The date is free again.' });
     } catch (err) {
       setNotice({ kind: 'error', text: err.message });
     } finally {
@@ -37,12 +51,12 @@ function CustomerBookings() {
   }
 
   return (
-    <section>
-      <h1>Book a wall painting</h1>
+    <>
+      <PageHeader title="Wall painting" subtitle="Book our artists to paint a mural on your wall. The studio confirms every booking." />
       <Notice notice={notice} onClose={() => setNotice(null)} />
-      <div className="two-col">
-        <div className="card pad">
-          <h2>New booking</h2>
+      <div className="split">
+        <section className="card card-pad">
+          <div className="card-title"><h2><Icon name="calendar" /> New booking</h2></div>
           <AsyncView state={options}>
             {(opt) => (
               <BookingForm
@@ -57,28 +71,34 @@ function CustomerBookings() {
               />
             )}
           </AsyncView>
-        </div>
+        </section>
 
-        <div>
-          <h2>My bookings</h2>
-          <AsyncView state={bookings} isEmpty={(d) => d.bookings.length === 0} empty="No bookings yet. Pick a date to get started.">
+        <section className="stack">
+          <h2>Your bookings</h2>
+          <AsyncView state={bookings} isEmpty={(d) => d.bookings.length === 0} emptyIcon="calendar"
+            emptyTitle="No bookings yet" empty="Pick a date and wall size to request your first mural.">
             {(d) => (
               <ul className="list">
                 {d.bookings.map((b) => (
-                  <li key={b.id} className="card pad row-item">
-                    <div>
-                      <strong>{niceDate(b.date)}</strong> · {b.wallSqft} sq ft · {money(b.price)}
-                      <div className="muted wrap">{b.address}</div>
+                  <li key={b.id} className="card list-item">
+                    <DateTile date={b.date} />
+                    <div className="list-item-main">
+                      <div className="cell-main">{niceDate(b.date)}</div>
+                      <div className="meta">
+                        <span>{b.wallSqft} sq ft</span>
+                        <span>{money(b.price)}</span>
+                        <span className="wrap"><Icon name="mapPin" size={14} />{b.address}</span>
+                      </div>
                     </div>
-                    <div className="row-actions">
+                    <div className="list-item-side">
                       <StatusBadge status={b.status} />
                       {b.canCancel && (
-                        <button type="button" className="danger" onClick={() => cancel(b)} disabled={busy !== null}>
+                        <button type="button" className="danger small" onClick={() => cancel(b)} disabled={busy !== null}>
                           {busy === b.id ? 'Cancelling…' : 'Cancel'}
                         </button>
                       )}
                       {!b.canCancel && ['requested', 'confirmed'].includes(b.status) && (
-                        <span className="muted small">Too close to the date to cancel</span>
+                        <span className="faint small">Can’t cancel within 3 days</span>
                       )}
                     </div>
                   </li>
@@ -86,9 +106,9 @@ function CustomerBookings() {
               </ul>
             )}
           </AsyncView>
-        </div>
+        </section>
       </div>
-    </section>
+    </>
   );
 }
 
@@ -129,29 +149,35 @@ function BookingForm({ options, taken, onBooked, onConflict }) {
 
   return (
     <form onSubmit={submit} className="form">
-      {formError && <Notice notice={{ kind: 'error', text: formError }} onClose={() => setFormError(null)} />}
-      <Field label="Date" error={errors.date || (dateTaken ? 'This date is already booked. Please pick another.' : null)}
-        hint={`Between ${niceDate(minDate)} and ${niceDate(maxDate)}.`}>
-        <input type="date" min={minDate} max={maxDate} value={form.date} onChange={set('date')} required />
-      </Field>
-      <Field label="Wall size (sq ft)" error={errors.wallSqft} hint="10 to 500 sq ft.">
-        <input type="number" min={10} max={500} step={1} value={form.wallSqft} onChange={set('wallSqft')} required />
-      </Field>
+      {formError && <Notice notice={{ kind: 'error', text: formError }} onClose={() => setFormError(null)} inline />}
+      <div className="form-row">
+        <Field label="Date" error={errors.date || (dateTaken ? 'Already booked. Please pick another date.' : null)}>
+          <input type="date" min={minDate} max={maxDate} value={form.date} onChange={set('date')} required />
+        </Field>
+        <Field label="Wall size (sq ft)" error={errors.wallSqft}>
+          <input type="number" min={10} max={500} step={1} value={form.wallSqft} onChange={set('wallSqft')} required placeholder="10–500" />
+        </Field>
+      </div>
+      <span className="field-hint">Dates from {niceDate(minDate)} to {niceDate(maxDate)}.</span>
       <Field label="Address" error={errors.address}>
-        <textarea rows={3} value={form.address} onChange={set('address')} required minLength={5} maxLength={300} />
+        <textarea rows={3} value={form.address} onChange={set('address')} required minLength={5} maxLength={300} placeholder="House, street, area, city" />
       </Field>
-      <p className="price-line">
-        Price: <strong>{validSize ? money(sqft * options.muralRatePerSqFt) : '—'}</strong>
-        <span className="muted"> ({money(options.muralRatePerSqFt)} per sq ft)</span>
-      </p>
+
+      <div className="summary">
+        <div>
+          <div className="summary-label">Estimated price</div>
+          <div className="faint small">{validSize ? `${sqft} sq ft × ${money(options.muralRatePerSqFt)}` : `${money(options.muralRatePerSqFt)} per sq ft`}</div>
+        </div>
+        <div className="summary-value">{validSize ? money(sqft * options.muralRatePerSqFt) : '₹—'}</div>
+      </div>
       <button type="submit" disabled={busy || dateTaken}>{busy ? 'Booking…' : 'Request booking'}</button>
 
-      <div className="taken">
-        <span className="muted small">Already booked:</span>{' '}
-        {taken.loading && !taken.data && <span className="muted small">checking…</span>}
-        {taken.error && <span className="small field-error">couldn’t load booked dates (the server will still check).</span>}
+      <div className="chips">
+        <span className="faint small">Already booked:</span>
+        {taken.loading && !taken.data && <span className="faint small">checking…</span>}
+        {taken.error && <span className="small field-error">couldn’t load booked dates (the server still checks).</span>}
         {taken.data && (takenDates.length === 0
-          ? <span className="muted small">none, every date is open.</span>
+          ? <span className="faint small">none, every date is open</span>
           : takenDates.map((d) => <span key={d} className="chip">{niceDate(d)}</span>))}
       </div>
     </form>
@@ -180,59 +206,53 @@ function StudioBookings() {
     }
   }
 
-  const shown = (d) => d.bookings.filter((b) => filter === 'all' || b.status === filter);
-
   return (
-    <section>
-      <div className="page-head">
-        <h1>Wall bookings</h1>
-        <StatusFilter value={filter} onChange={setFilter} statuses={STATUSES} />
-      </div>
+    <>
+      <PageHeader title="Wall bookings" subtitle="Confirm or decline mural requests. Declined dates open up again." />
       <Notice notice={notice} onClose={() => setNotice(null)} />
-      <AsyncView state={bookings} isEmpty={(d) => shown(d).length === 0}
-        empty={filter === 'all' ? 'No bookings yet.' : `No ${filter} bookings.`}>
-        {(d) => (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Date</th><th>Customer</th><th>Wall</th><th>Price</th><th>Address</th><th>Status</th><th aria-label="Actions" /></tr>
-              </thead>
-              <tbody>
-                {shown(d).map((b) => (
-                  <tr key={b.id}>
-                    <td>{niceDate(b.date)}</td>
-                    <td>{b.customer.name}<div className="muted">{b.customer.email}</div></td>
-                    <td>{b.wallSqft} sq ft</td>
-                    <td>{money(b.price)}</td>
-                    <td className="wrap">{b.address}</td>
-                    <td><StatusBadge status={b.status} /></td>
-                    <td className="nowrap">
-                      {b.status === 'requested' && (
-                        <>
-                          <button type="button" onClick={() => act(b, 'confirm')} disabled={busy !== null}>Confirm</button>{' '}
-                          <button type="button" className="danger" onClick={() => act(b, 'decline')} disabled={busy !== null}>Decline</button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <AsyncView state={bookings}>
+        {(d) => {
+          const shown = d.bookings.filter((b) => filter === 'all' || b.status === filter);
+          return (
+            <>
+              <Tabs label="Filter bookings" value={filter} onChange={setFilter} options={statusTabs(d.bookings, STATUSES)} />
+              {shown.length === 0 ? (
+                <Empty icon="calendar" title={filter === 'requested' ? 'All caught up' : `No ${filter === 'all' ? '' : `${filter} `}bookings`}>
+                  {filter === 'requested' ? 'There are no bookings waiting for a decision.' : 'Nothing to show here yet.'}
+                </Empty>
+              ) : (
+                <div className="card table-card">
+                  <table>
+                    <thead>
+                      <tr><th>Date</th><th>Customer</th><th>Wall</th><th>Price</th><th>Address</th><th>Status</th><th aria-label="Actions" /></tr>
+                    </thead>
+                    <tbody>
+                      {shown.map((b) => (
+                        <tr key={b.id}>
+                          <td><div className="with-thumb"><DateTile date={b.date} /><span className="cell-main nowrap">{niceDate(b.date)}</span></div></td>
+                          <td><div className="cell-main">{b.customer.name}</div><div className="cell-sub">{b.customer.email}</div></td>
+                          <td className="nowrap">{b.wallSqft} sq ft</td>
+                          <td className="cell-main">{money(b.price)}</td>
+                          <td className="wrap muted">{b.address}</td>
+                          <td><StatusBadge status={b.status} /></td>
+                          <td>
+                            {b.status === 'requested' && (
+                              <div className="row-actions">
+                                <button type="button" className="success small" onClick={() => act(b, 'confirm')} disabled={busy !== null}><Icon name="check" size={14} /> Confirm</button>
+                                <button type="button" className="danger small" onClick={() => act(b, 'decline')} disabled={busy !== null}>Decline</button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          );
+        }}
       </AsyncView>
-    </section>
-  );
-}
-
-export function StatusFilter({ value, onChange, statuses }) {
-  return (
-    <label className="filter">
-      Show{' '}
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="all">all</option>
-        {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
-      </select>
-    </label>
+    </>
   );
 }

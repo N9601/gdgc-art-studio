@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, useApi } from '../api.js';
 import { useAuth } from '../auth.jsx';
-import { AsyncView, Notice, StatusBadge } from '../components/ui.jsx';
+import { AsyncView, Notice, PageHeader, StatusBadge } from '../components/ui.jsx';
 import { money, niceTime } from '../format.js';
 
 // Customers see and cancel their own orders; the studio sees every order.
@@ -19,7 +19,7 @@ export default function Orders() {
     setNotice(null);
     try {
       await api(`/orders/${order.id}/cancel`, { method: 'POST' });
-      setNotice({ kind: 'success', text: 'Order cancelled.' });
+      setNotice({ kind: 'success', text: 'Order cancelled. The painting is back on sale.' });
     } catch (err) {
       setNotice({ kind: 'error', text: err.message });
     } finally {
@@ -29,16 +29,21 @@ export default function Orders() {
   }
 
   return (
-    <section>
-      <h1>{studio ? 'All orders' : 'My orders'}</h1>
+    <>
+      <PageHeader
+        title={studio ? 'Orders' : 'My orders'}
+        subtitle={studio ? 'Every painting sold through the site, newest first.' : 'Paintings you’ve bought. Cancelling puts a painting back on sale.'}
+      />
       <Notice notice={notice} onClose={() => setNotice(null)} />
       <AsyncView
         state={orders}
         isEmpty={(d) => d.orders.length === 0}
-        empty={studio ? 'No orders yet.' : <>You haven’t bought anything yet. <Link to="/">Browse paintings</Link></>}
+        emptyTitle="No orders yet"
+        emptyIcon="bag"
+        empty={studio ? 'Orders appear here as soon as a customer buys a painting.' : <>Find something you love in the <Link to="/">gallery</Link>.</>}
       >
         {(d) => (
-          <div className="table-wrap">
+          <div className="card table-card">
             <table>
               <thead>
                 <tr>
@@ -53,18 +58,28 @@ export default function Orders() {
               <tbody>
                 {d.orders.map((o) => (
                   <tr key={o.id}>
-                    <td>{o.painting.title}<div className="muted">by {o.painting.artist}</div></td>
-                    {studio && <td>{o.customer.name}<div className="muted">{o.customer.email}</div></td>}
-                    <td>{money(o.price)}</td>
-                    <td>{niceTime(o.createdAt)}</td>
+                    <td>
+                      <div className="with-thumb">
+                        {o.painting.imageUrl ? <img className="thumb" src={o.painting.imageUrl} alt="" /> : <span className="thumb" />}
+                        <div>
+                          <div className="cell-main">{o.painting.title}</div>
+                          <div className="cell-sub">by {o.painting.artist}</div>
+                        </div>
+                      </div>
+                    </td>
+                    {studio && <td><div className="cell-main">{o.customer.name}</div><div className="cell-sub">{o.customer.email}</div></td>}
+                    <td className="cell-main">{money(o.price)}</td>
+                    <td className="nowrap muted">{niceTime(o.createdAt)}</td>
                     <td><StatusBadge status={o.status} /></td>
                     {!studio && (
                       <td>
-                        {o.status === 'placed' && (
-                          <button type="button" className="danger" onClick={() => cancel(o)} disabled={busy !== null}>
-                            {busy === o.id ? 'Cancelling…' : 'Cancel'}
-                          </button>
-                        )}
+                        <div className="row-actions">
+                          {o.status === 'placed' && (
+                            <button type="button" className="danger small" onClick={() => cancel(o)} disabled={busy !== null}>
+                              {busy === o.id ? 'Cancelling…' : 'Cancel'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -74,6 +89,6 @@ export default function Orders() {
           </div>
         )}
       </AsyncView>
-    </section>
+    </>
   );
 }

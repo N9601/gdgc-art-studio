@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { api } from '../api.js';
-import { ErrorState, Field, Loading, Notice } from '../components/ui.jsx';
+import Icon from '../components/Icon.jsx';
+import { ErrorState, Field, Loading, Notice, PageHeader, StatusBadge } from '../components/ui.jsx';
+import { money } from '../format.js';
 
 const blank = { title: '', artist: '', description: '', price: '', imageUrl: '' };
 
@@ -38,7 +40,7 @@ export default function PaintingForm() {
     const body = { ...form, price: Number(form.price) };
     try {
       await api(editing ? `/paintings/${id}` : '/paintings', { method: editing ? 'PUT' : 'POST', body });
-      navigate('/');
+      navigate('/paintings');
     } catch (err) {
       setErrors(err.fields ?? {});
       setNotice({ kind: 'error', text: err.message });
@@ -46,32 +48,58 @@ export default function PaintingForm() {
     }
   }
 
-  if (load.loading) return <Loading />;
-  if (load.error) return <ErrorState error={load.error} onRetry={fetchPainting} />;
+  const back = <Link className="back" to="/paintings"><Icon name="arrowLeft" size={16} /> Back to paintings</Link>;
+  if (load.loading) return <>{back}<Loading /></>;
+  if (load.error) return <>{back}<ErrorState error={load.error} onRetry={fetchPainting} /></>;
   const sold = form.status === 'sold';
+  const price = Number(form.price);
 
   return (
-    <section className="narrow">
-      <p><Link to="/">← Back to paintings</Link></p>
-      <h1>{editing ? 'Edit painting' : 'Add a painting'}</h1>
-      {sold && <Notice notice={{ kind: 'error', text: 'This painting has been sold, so it can no longer be edited.' }} />}
+    <>
+      {back}
+      <PageHeader
+        title={editing ? 'Edit painting' : 'Add a painting'}
+        subtitle={editing ? 'Changes show in the gallery straight away.' : 'It goes on sale as soon as you save it.'}
+      />
+      {sold && <Notice notice={{ kind: 'error', text: 'This painting has been sold, so it can no longer be edited.' }} inline />}
       <Notice notice={notice} onClose={() => setNotice(null)} />
-      <form onSubmit={submit} className="form">
-        <fieldset disabled={sold || busy}>
-          <Field label="Title" error={errors.title}><input value={form.title} onChange={set('title')} required maxLength={200} /></Field>
-          <Field label="Artist" error={errors.artist}><input value={form.artist} onChange={set('artist')} required maxLength={120} /></Field>
-          <Field label="Description" error={errors.description}>
-            <textarea rows={4} value={form.description} onChange={set('description')} maxLength={2000} />
-          </Field>
-          <Field label="Price (₹, whole rupees)" error={errors.price}>
-            <input type="number" min={1} step={1} value={form.price} onChange={set('price')} required />
-          </Field>
-          <Field label="Image URL" error={errors.imageUrl} hint="Optional. A link to the picture, e.g. /images/p-001.jpg">
-            <input value={form.imageUrl} onChange={set('imageUrl')} maxLength={500} />
-          </Field>
-          <button type="submit">{busy ? 'Saving…' : editing ? 'Save changes' : 'Add painting'}</button>
-        </fieldset>
-      </form>
-    </section>
+
+      <div className="split">
+        <form onSubmit={submit} className="card card-pad form">
+          <fieldset disabled={sold || busy}>
+            <Field label="Title" error={errors.title}><input value={form.title} onChange={set('title')} required maxLength={200} /></Field>
+            <Field label="Artist" error={errors.artist}><input value={form.artist} onChange={set('artist')} required maxLength={120} /></Field>
+            <Field label="Description" error={errors.description}>
+              <textarea rows={4} value={form.description} onChange={set('description')} maxLength={2000} />
+            </Field>
+            <Field label="Price (₹, whole rupees)" error={errors.price}>
+              <input type="number" min={1} step={1} value={form.price} onChange={set('price')} required />
+            </Field>
+            <Field label="Image URL" error={errors.imageUrl} hint="Optional. For example /images/p-001.jpg">
+              <input value={form.imageUrl} onChange={set('imageUrl')} maxLength={500} />
+            </Field>
+            <button type="submit">{busy ? 'Saving…' : editing ? 'Save changes' : 'Add painting'}</button>
+          </fieldset>
+        </form>
+
+        <div className="stack">
+          <span className="field-label">Preview</span>
+          <div className="card painting" style={{ maxWidth: 340 }}>
+            <div className="painting-media">
+              {form.imageUrl
+                ? <img src={form.imageUrl} alt="" />
+                : <div className="no-image"><Icon name="image" size={28} />No image</div>}
+              <StatusBadge status={form.status ?? 'available'} />
+            </div>
+            <div className="painting-body">
+              <h2>{form.title || 'Untitled'}</h2>
+              <p className="artist">by {form.artist || 'Artist name'}</p>
+              {form.description && <p className="description">{form.description}</p>}
+              <div className="painting-foot"><span className="price">{price > 0 ? money(price) : '₹—'}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

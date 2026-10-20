@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { api, useApi } from '../api.js';
 import { useAuth } from '../auth.jsx';
-import { AsyncView, Field, Notice, StatusBadge } from '../components/ui.jsx';
+import Icon from '../components/Icon.jsx';
+import { AsyncView, Empty, Field, Notice, PageHeader, StatusBadge, Tabs } from '../components/ui.jsx';
 import { addDays, niceDate } from '../format.js';
-import { StatusFilter } from './Bookings.jsx';
+import { statusTabs } from './Bookings.jsx';
 
 const STATUSES = ['requested', 'accepted', 'declined', 'cancelled'];
 
@@ -38,12 +39,14 @@ function CustomerPottery() {
   }
 
   return (
-    <section>
-      <h1>Custom pottery</h1>
+    <>
+      <PageHeader title="Custom pottery" subtitle="Pick a piece, a glaze and a quantity. You can edit or cancel until the studio accepts." />
       <Notice notice={notice} onClose={() => setNotice(null)} />
-      <div className="two-col">
-        <div className="card pad">
-          <h2>{editing ? `Edit request #${editing.id}` : 'New request'}</h2>
+      <div className="split">
+        <section className="card card-pad">
+          <div className="card-title">
+            <h2><Icon name="vase" /> {editing ? `Edit request #${editing.id}` : 'New request'}</h2>
+          </div>
           <AsyncView state={options}>
             {(opt) => (
               <PotteryForm
@@ -60,29 +63,34 @@ function CustomerPottery() {
               />
             )}
           </AsyncView>
-        </div>
+        </section>
 
-        <div>
-          <h2>My requests</h2>
-          <AsyncView state={requests} isEmpty={(d) => d.requests.length === 0} empty="No pottery requests yet.">
+        <section className="stack">
+          <h2>Your requests</h2>
+          <AsyncView state={requests} isEmpty={(d) => d.requests.length === 0} emptyIcon="vase"
+            emptyTitle="No requests yet" empty="Your custom pottery requests will appear here.">
             {(d) => (
               <ul className="list">
                 {d.requests.map((r) => (
-                  <li key={r.id} className="card pad row-item">
-                    <div>
-                      <strong>{r.quantity} × {r.item.name}</strong> · {r.glaze.name}
-                      <div className="muted">Needed by {niceDate(r.neededBy)}</div>
-                      {r.notes && <div className="muted wrap">“{r.notes}”</div>}
+                  <li key={r.id} className="card list-item">
+                    <span className="item-icon"><Icon name="vase" size={20} /></span>
+                    <div className="list-item-main">
+                      <div className="cell-main">{r.quantity} × {r.item.name}</div>
+                      <div className="meta">
+                        <span>{r.glaze.name} glaze</span>
+                        <span><Icon name="clock" size={14} /> Needed by {niceDate(r.neededBy)}</span>
+                      </div>
+                      {r.notes && <div className="faint small wrap">“{r.notes}”</div>}
                     </div>
-                    <div className="row-actions">
+                    <div className="list-item-side">
                       <StatusBadge status={r.status} />
                       {r.status === 'requested' && (
-                        <>
-                          <button type="button" className="secondary" onClick={() => setEditing(r)} disabled={busy !== null}>Edit</button>
-                          <button type="button" className="danger" onClick={() => cancel(r)} disabled={busy !== null}>
+                        <div className="row-actions">
+                          <button type="button" className="secondary small" onClick={() => setEditing(r)} disabled={busy !== null}>Edit</button>
+                          <button type="button" className="danger small" onClick={() => cancel(r)} disabled={busy !== null}>
                             {busy === r.id ? 'Cancelling…' : 'Cancel'}
                           </button>
-                        </>
+                        </div>
                       )}
                     </div>
                   </li>
@@ -90,9 +98,9 @@ function CustomerPottery() {
               </ul>
             )}
           </AsyncView>
-        </div>
+        </section>
       </div>
-    </section>
+    </>
   );
 }
 
@@ -131,7 +139,7 @@ function PotteryForm({ options, initial, onSaved, onStopEditing, onConflict }) {
 
   return (
     <form onSubmit={submit} className="form">
-      {formError && <Notice notice={{ kind: 'error', text: formError }} onClose={() => setFormError(null)} />}
+      {formError && <Notice notice={{ kind: 'error', text: formError }} onClose={() => setFormError(null)} inline />}
       <Field label="Item" error={errors.itemId}>
         <select value={form.itemId} onChange={set('itemId')} required>
           <option value="" disabled>Choose an item</option>
@@ -144,14 +152,16 @@ function PotteryForm({ options, initial, onSaved, onStopEditing, onConflict }) {
           {options.glazes.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
         </select>
       </Field>
-      <Field label="Quantity" error={errors.quantity} hint="1 to 12.">
-        <input type="number" min={1} max={12} step={1} value={form.quantity} onChange={set('quantity')} required />
-      </Field>
-      <Field label="Needed by" error={errors.neededBy} hint={`On or after ${niceDate(minDate)} (at least 14 days away).`}>
-        <input type="date" min={minDate} value={form.neededBy} onChange={set('neededBy')} required />
-      </Field>
+      <div className="form-row">
+        <Field label="Quantity" error={errors.quantity} hint="1 to 12">
+          <input type="number" min={1} max={12} step={1} value={form.quantity} onChange={set('quantity')} required />
+        </Field>
+        <Field label="Needed by" error={errors.neededBy} hint={`From ${niceDate(minDate)}`}>
+          <input type="date" min={minDate} value={form.neededBy} onChange={set('neededBy')} required />
+        </Field>
+      </div>
       <Field label="Notes (optional)" error={errors.notes}>
-        <textarea rows={2} value={form.notes} onChange={set('notes')} maxLength={500} />
+        <textarea rows={2} value={form.notes} onChange={set('notes')} maxLength={500} placeholder="Anything the potter should know" />
       </Field>
       <div className="actions">
         <button type="submit" disabled={busy}>{busy ? 'Saving…' : initial ? 'Save changes' : 'Send request'}</button>
@@ -183,49 +193,61 @@ function StudioPottery() {
     }
   }
 
-  const shown = (d) => d.requests.filter((r) => filter === 'all' || r.status === filter);
-
   return (
-    <section>
-      <div className="page-head">
-        <h1>Pottery requests</h1>
-        <StatusFilter value={filter} onChange={setFilter} statuses={STATUSES} />
-      </div>
+    <>
+      <PageHeader title="Pottery requests" subtitle="Accept or decline custom pottery orders." />
       <Notice notice={notice} onClose={() => setNotice(null)} />
-      <AsyncView state={requests} isEmpty={(d) => shown(d).length === 0}
-        empty={filter === 'all' ? 'No pottery requests yet.' : `No ${filter === 'requested' ? 'new' : filter} requests.`}>
-        {(d) => (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>#</th><th>Customer</th><th>Item</th><th>Glaze</th><th>Qty</th><th>Needed by</th><th>Notes</th><th>Status</th><th aria-label="Actions" /></tr>
-              </thead>
-              <tbody>
-                {shown(d).map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.id}</td>
-                    <td>{r.customer.name}<div className="muted">{r.customer.email}</div></td>
-                    <td>{r.item.name}</td>
-                    <td>{r.glaze.name}</td>
-                    <td>{r.quantity}</td>
-                    <td>{niceDate(r.neededBy)}</td>
-                    <td className="wrap">{r.notes || <span className="muted">—</span>}</td>
-                    <td><StatusBadge status={r.status} /></td>
-                    <td className="nowrap">
-                      {r.status === 'requested' && (
-                        <>
-                          <button type="button" onClick={() => act(r, 'accept')} disabled={busy !== null}>Accept</button>{' '}
-                          <button type="button" className="danger" onClick={() => act(r, 'decline')} disabled={busy !== null}>Decline</button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <AsyncView state={requests}>
+        {(d) => {
+          const shown = d.requests.filter((r) => filter === 'all' || r.status === filter);
+          return (
+            <>
+              <Tabs label="Filter requests" value={filter} onChange={setFilter} options={statusTabs(d.requests, STATUSES)} />
+              {shown.length === 0 ? (
+                <Empty icon="vase" title={filter === 'requested' ? 'All caught up' : 'Nothing here yet'}>
+                  {filter === 'requested' ? 'There are no requests waiting for a decision.' : 'Requests will show up here.'}
+                </Empty>
+              ) : (
+                <div className="card table-card">
+                  <table>
+                    <thead>
+                      <tr><th>Request</th><th>Customer</th><th>Glaze</th><th>Qty</th><th>Needed by</th><th>Status</th><th aria-label="Actions" /></tr>
+                    </thead>
+                    <tbody>
+                      {shown.map((r) => (
+                        <tr key={r.id}>
+                          <td>
+                            <div className="with-thumb">
+                              <span className="item-icon"><Icon name="vase" size={18} /></span>
+                              <div>
+                                <div className="cell-main">{r.item.name}</div>
+                                <div className="cell-sub wrap">#{r.id}{r.notes ? ` · “${r.notes}”` : ''}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td><div className="cell-main">{r.customer.name}</div><div className="cell-sub">{r.customer.email}</div></td>
+                          <td>{r.glaze.name}</td>
+                          <td className="cell-main">{r.quantity}</td>
+                          <td className="nowrap">{niceDate(r.neededBy)}</td>
+                          <td><StatusBadge status={r.status} /></td>
+                          <td>
+                            {r.status === 'requested' && (
+                              <div className="row-actions">
+                                <button type="button" className="success small" onClick={() => act(r, 'accept')} disabled={busy !== null}><Icon name="check" size={14} /> Accept</button>
+                                <button type="button" className="danger small" onClick={() => act(r, 'decline')} disabled={busy !== null}>Decline</button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          );
+        }}
       </AsyncView>
-    </section>
+    </>
   );
 }

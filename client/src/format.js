@@ -9,6 +9,12 @@ export const niceDate = (date) => dateFmt.format(new Date(`${date}T00:00:00Z`));
 const stampFmt = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 export const niceTime = (iso) => stampFmt.format(new Date(iso));
 
+// '2026-11-15' -> { month: 'Nov', day: 15 } for the little calendar tiles
+export function dateParts(date) {
+  const d = new Date(`${date}T00:00:00Z`);
+  return { month: d.toLocaleString('en-IN', { month: 'short', timeZone: 'UTC' }), day: d.getUTCDate() };
+}
+
 export function addDays(date, days) {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);

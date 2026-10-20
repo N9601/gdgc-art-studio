@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../auth.jsx';
+import AuthLayout from '../components/AuthLayout.jsx';
 import { Field, Notice } from '../components/ui.jsx';
 
 export default function Login() {
@@ -26,19 +27,22 @@ export default function Login() {
   }
 
   return (
-    <section className="auth-card">
-      <h1>Log in</h1>
-      <Notice notice={notice} onClose={() => setNotice(null)} />
+    <AuthLayout>
+      <div>
+        <h1>Welcome back</h1>
+        <p className="subtitle">Log in to buy paintings, book a wall or order pottery.</p>
+      </div>
+      <Notice notice={notice} onClose={() => setNotice(null)} inline />
       <form onSubmit={submit} className="form">
         <Field label="Email">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" placeholder="you@example.com" />
         </Field>
         <Field label="Password">
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
         </Field>
-        <button type="submit" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
+        <button type="submit" className="block" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
       </form>
-      <p className="muted">New here? <Link to="/signup">Create a customer account</Link></p>
-    </section>
+      <p className="auth-foot">New here? <Link to="/signup">Create a customer account</Link></p>
+    </AuthLayout>
   );
 }
