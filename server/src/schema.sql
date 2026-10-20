@@ -88,3 +88,16 @@ CREATE TABLE IF NOT EXISTS pottery_requests (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Hosts like Supabase also expose tables through an auto-generated REST API (the "Data API").
+-- Row Level Security with no policies blocks that API completely. This app is unaffected:
+-- it connects as the tables' owner, and owners are not subject to row security.
+ALTER TABLE users            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settings         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE paintings        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookings         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pottery_items    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE glazes           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pottery_requests ENABLE ROW LEVEL SECURITY;
