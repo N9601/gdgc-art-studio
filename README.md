@@ -46,7 +46,8 @@ Open **http://localhost:5173**. The first start takes about 20 seconds. Stop it 
 
 - **Studio (admin):** `studio@artstudio.in` / `Studio@123`. This is the account from the seed data;
   there is no studio sign-up.
-- **Customer:** use *Create a customer account* on the login page.
+- **Customer:** `customer@artstudio.in` / `Customer@123`, a dummy customer (Asha Rao) created by the seed
+  script from `server/seed/demo-users.json`. You can also sign up with *Create a customer account*.
 
 ### One server instead of two
 

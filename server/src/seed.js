@@ -12,6 +12,11 @@ export function readSeedFile() {
   return JSON.parse(fs.readFileSync(path.join(here, '..', 'seed', 'seed.json'), 'utf8'));
 }
 
+// Dummy customer accounts (not part of the brief's seed data) for trying the app quickly.
+export function readDemoUsers() {
+  return JSON.parse(fs.readFileSync(path.join(here, '..', 'seed', 'demo-users.json'), 'utf8')).customers;
+}
+
 export async function migrate(pool) {
   await pool.query(fs.readFileSync(path.join(here, 'schema.sql'), 'utf8'));
 }
@@ -19,6 +24,7 @@ export async function migrate(pool) {
 export async function seed(pool, data = readSeedFile()) {
   await migrate(pool);
   const studioHash = await bcrypt.hash(data.studioAccount.password, 10);
+  const demoCustomers = await Promise.all(readDemoUsers().map(async (c) => ({ ...c, hash: await bcrypt.hash(c.password, 10) })));
 
   await transaction(pool, async (db) => {
     const upsertSetting = 'INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2';
@@ -38,6 +44,14 @@ export async function seed(pool, data = readSeedFile()) {
        ON CONFLICT ((lower(email))) DO NOTHING`,
       [data.studioAccount.email.toLowerCase(), studioHash],
     );
+
+    for (const c of demoCustomers) {
+      await db.query(
+        `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'customer')
+         ON CONFLICT ((lower(email))) DO NOTHING`,
+        [c.name, c.email.toLowerCase(), c.hash],
+      );
+    }
 
     const { rows } = await db.query('SELECT count(*)::int AS n FROM paintings');
     if (rows[0].n === 0) {

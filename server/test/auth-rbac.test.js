@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
+import { readDemoUsers } from '../src/seed.js';
 import { inDays, loginStudio, newCustomer, request, startTestServer } from './helpers.js';
 
 let server;
@@ -31,6 +32,13 @@ describe('login', () => {
     const studio = await loginStudio(server.app);
     const me = await studio.get('/api/auth/me').expect(200);
     assert.equal(me.body.user.role, 'studio');
+  });
+
+  it('seeds the dummy customer from demo-users.json', async () => {
+    const [demo] = readDemoUsers();
+    const res = await request(server.app).post('/api/auth/login').send({ email: demo.email, password: demo.password }).expect(200);
+    assert.equal(res.body.user.role, 'customer');
+    assert.equal(res.body.user.name, demo.name);
   });
 });
 

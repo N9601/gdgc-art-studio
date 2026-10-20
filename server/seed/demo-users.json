@@ -1,0 +1,6 @@
+{
+  "note": "Dummy customer accounts for trying the app and recording the demo. Created by `npm run seed`.",
+  "customers": [
+    { "name": "Asha Rao", "email": "customer@artstudio.in", "password": "Customer@123" }
+  ]
+}
