@@ -1,11 +1,14 @@
 import { Link } from 'react-router';
-import Icon from './Icon.jsx';
+import Logo from './Logo.jsx';
 
-export default function Brand() {
+export default function Brand({ size = 44 }) {
   return (
     <Link to="/" className="brand">
-      <span className="brand-mark"><Icon name="sparkles" size={18} /></span>
-      <span>Art Studio<small>Paintings · Murals · Pottery</small></span>
+      <Logo size={size} />
+      <span>
+        <span className="brand-name">Art Studio</span>
+        <small>Paintings · Murals · Pottery</small>
+      </span>
     </Link>
   );
 }

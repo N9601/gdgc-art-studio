@@ -1,3 +1,5 @@
+<p align="center"><img src="client/public/favicon.svg" width="96" alt="Art Studio logo: a hand-drawn clay pot with a paintbrush"></p>
+
 # Art Studio
 
 A small full-stack website for an art studio. Customers buy one-of-a-kind paintings, book a wall

@@ -6,7 +6,7 @@ export default function AuthLayout({ children }) {
   return (
     <div className="auth">
       <section className="auth-art" aria-hidden="true">
-        <Brand />
+        <Brand size={64} />
         <div>
           <h2 className="auth-headline">Original art, made by hand, for your walls.</h2>
           <ul className="auth-points">
