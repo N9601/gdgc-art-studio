@@ -3,6 +3,6 @@ dist/
 .env
 .env.*
 !.env.example
-.test-db/
+.local-db/
 *.log
 .DS_Store
