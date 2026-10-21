@@ -30,8 +30,11 @@ Open **http://localhost:5173**. The first start takes about 20 seconds. Stop it 
 
 ### Option B: your own Postgres (Neon, Supabase or any other)
 
-1. Create a free database, for example on [Neon](https://neon.tech), and copy its connection string.
-2. Copy `server/.env.example` to `server/.env` and paste the string into `DATABASE_URL`.
+1. Create a free database, for example on [Supabase](https://supabase.com) or [Neon](https://neon.tech),
+   and copy its connection string. On Supabase, use **Connect → Session pooler** if your network has
+   no IPv6 (the direct connection is IPv6-only on the free plan).
+2. Copy `server/.env.example` to `server/.env` and paste the string into `DATABASE_URL`, with your
+   password filled in. For Supabase add `?sslmode=no-verify` (encrypted; Supabase uses its own CA).
 3. Create the tables and load the seed data (safe to run again):
    ```bash
    npm run seed
@@ -79,6 +82,7 @@ database is never touched), load the seed data and check the business rules thro
 | `npm run dev` | API on :4000 (restarts on change) and the Vite client on :5173 |
 | `npm run seed` | Create tables and load `server/seed/seed.json` into `DATABASE_URL` |
 | `npm test` | API tests against a throwaway Postgres |
+| `npm run reset:local` | Delete the `dev:local` database so the next start is a fresh seed (stop the app first) |
 | `npm run build` / `npm start` | Build the client, then serve everything from Express |
 
 ## Environment variables (`server/.env`)

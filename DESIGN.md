@@ -18,12 +18,14 @@ but that is only for convenience; the server is what enforces the rules.
 
 ## 2. Which database did you choose, and why?
 
-PostgreSQL, hosted on Neon for the cloud setup (Supabase works the same way). The data is
+PostgreSQL, hosted on Supabase's free tier (any Postgres works, e.g. Neon). The data is
 naturally relational (users, paintings, orders, bookings, requests that point at each other), and
 the two hardest rules in the brief, "a painting sells once" and "a date is booked once", can be
 made **database guarantees** with transactions, row locks and partial unique indexes instead of
 only application checks. The same SQL also runs on a local embedded Postgres, which is how
-`npm test` and `npm run dev:local` work without any account or setup.
+`npm test` and `npm run dev:local` work without any account or setup. Because Supabase also
+exposes tables through its auto-generated Data API, every table has row level security switched
+on with no policies: that API can't read anything, while the app (the tables' owner) is unaffected.
 
 ## 3. How do you stop two people from taking the same painting or date?
 
@@ -58,7 +60,9 @@ and 6 simultaneous bookings and check that exactly one succeeds.
 - The full RBAC table, with 401/403/404 as specified.
 - Loading, empty and error states on every data screen, and clear messages when the server
   refuses something.
-- 21 API tests, including the concurrency cases.
+- A studio Overview page (sales, items waiting for review, upcoming murals) and a dummy customer
+  account in the seed data for quick testing.
+- 22 API tests, including the concurrency cases.
 
 **Left out:** the brief's out-of-scope list (payments, password reset, email verification, image
 uploads, which are replaced by an image URL field, deployment). I also didn't build pagination,
@@ -68,8 +72,8 @@ login rate limiting, or deleting paintings, which the brief doesn't ask for.
 - Rate-limit login attempts.
 - Add browser end-to-end tests (Playwright) on top of the API tests.
 - Add pagination and search for a larger catalogue.
-- Show studio-side summaries (pending bookings and requests).
-- Deploy: Render or Fly for the API with the Neon database, served over HTTPS with the cookie
+- Verify Supabase's TLS certificate with its CA file instead of `sslmode=no-verify`.
+- Deploy: Render or Fly for the API with the Supabase database, served over HTTPS with the cookie
   marked `Secure`.
 
 ## Other decisions
