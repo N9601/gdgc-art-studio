@@ -39,7 +39,8 @@ export default function Paintings() {
     setBuying(painting.id);
     setNotice(null);
     try {
-      await api('/orders', { method: 'POST', body: { paintingId: painting.id } });
+      // sends the price shown in the dialog, so a price changed meanwhile is refused (409), not charged
+      await api('/orders', { method: 'POST', body: { paintingId: painting.id, price: painting.price } });
       setNotice({ kind: 'success', text: `Order placed for “${painting.title}”. You’ll find it under My orders.` });
     } catch (err) {
       // e.g. 409 "this painting has just been sold" when someone else was faster

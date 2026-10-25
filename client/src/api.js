@@ -26,7 +26,11 @@ export async function api(path, { method = 'GET', body } = {}) {
   if (!res.ok) {
     // If the session ran out mid-use, tell the app so it can show the login page.
     if (res.status === 401 && !path.startsWith('/auth/')) window.dispatchEvent(new Event('session-expired'));
-    throw new ApiError(res.status, data.error || `Request failed (${res.status}).`, data.fields);
+    // No JSON error from a 5xx means the API itself didn't answer (e.g. the dev proxy couldn't reach it).
+    const fallback = res.status >= 500
+      ? 'The server is not responding. Check that it is running and try again.'
+      : `Request failed (${res.status}).`;
+    throw new ApiError(res.status, data.error || fallback, data.fields);
   }
   return data;
 }

@@ -32,6 +32,7 @@ function CustomerPottery() {
       if (editing?.id === r.id) setEditing(null);
     } catch (err) {
       setNotice({ kind: 'error', text: err.message });
+      if (editing?.id === r.id) setEditing(null); // it can't be edited either
     } finally {
       setBusy(null);
       requests.reload();
@@ -59,7 +60,14 @@ function CustomerPottery() {
                   requests.reload();
                 }}
                 onStopEditing={() => setEditing(null)}
-                onConflict={() => requests.reload()}
+                onConflict={(message) => {
+                  // e.g. the studio accepted the request a moment ago: close the edit form and say why
+                  if (editing) {
+                    setEditing(null);
+                    setNotice({ kind: 'error', text: message });
+                  }
+                  requests.reload();
+                }}
               />
             )}
           </AsyncView>
@@ -131,7 +139,7 @@ function PotteryForm({ options, initial, onSaved, onStopEditing, onConflict }) {
     } catch (err) {
       setErrors(err.fields ?? {});
       setFormError(err.message); // e.g. the studio accepted it a moment ago, so it can't be edited
-      if (err.status === 409) onConflict();
+      if (err.status === 409) onConflict(err.message);
     } finally {
       setBusy(false);
     }

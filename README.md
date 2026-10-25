@@ -47,6 +47,9 @@ Open **http://localhost:5173**. The first start takes about 20 seconds. Stop it 
 
 ### Logging in
 
+Visitors who aren't logged in see the landing page at http://localhost:5173, with links to log in
+or sign up.
+
 - **Studio (admin):** `studio@artstudio.in` / `Studio@123`. This is the account from the seed data;
   there is no studio sign-up.
 - **Customer:** `customer@artstudio.in` / `Customer@123`, a dummy customer (Asha Rao) created by the seed
@@ -58,6 +61,17 @@ Open **http://localhost:5173**. The first start takes about 20 seconds. Stop it 
 npm run build   # builds the React app into client/dist
 npm start       # Express serves the API and the built app on http://localhost:4000
 ```
+
+### Troubleshooting
+
+`npm run dev` and `npm start` check the database before they start, and stop with a message if
+something is wrong:
+
+- **"server/.env still has the [YOUR-PASSWORD] placeholder"**: put your database password in
+  `DATABASE_URL`, or use `npm run dev:local`, which needs no database setup.
+- **"Could not reach the database host"**: check `DATABASE_URL`. On Supabase without IPv6, use the
+  **Connect → Session pooler** string.
+- **"The database has no tables yet"**: run `npm run seed` once.
 
 ## Tests
 
@@ -73,6 +87,8 @@ database is never touched), load the seed data and check the business rules thro
 - each date booked only once under simultaneous requests; declined or cancelled dates free up
 - date windows, wall size and quantity limits, the 3-day cancellation rule
 - edit and cancel of pottery requests only while `requested`
+- no sale at a price the customer didn't see, and 4xx (never 500) for impossible ids, tampered
+  cookies, badly encoded URLs and oversized bodies
 
 ## Scripts
 
@@ -115,7 +131,7 @@ client/
     api.js          fetch wrapper + useApi hook (loading / error / data)
     auth.jsx        who is logged in
     components/ui.jsx   loading, empty, error, notices, form fields
-    pages/          Paintings, PaintingForm, Orders, Bookings, Pottery, Login, Signup
+    pages/          Landing, Paintings, PaintingForm, Orders, Bookings, Pottery, Login, Signup
 ```
 
 ## API
@@ -133,7 +149,7 @@ yours) or 409 (conflict: already sold, date taken, status already changed).
 | GET | `/api/paintings` · `/api/paintings/:id` | logged in | |
 | POST | `/api/paintings` | studio | add a painting |
 | PUT | `/api/paintings/:id` | studio | only while available (409 once sold) |
-| POST | `/api/orders` | customer | buy `{ paintingId }`; 409 if it was just sold |
+| POST | `/api/orders` | customer | buy `{ paintingId, price? }`; 409 if it was just sold, or if `price` no longer matches |
 | GET | `/api/orders` · `/api/orders/:id` | logged in | customers see only their own |
 | POST | `/api/orders/:id/cancel` | customer (owner) | painting becomes available again |
 | GET | `/api/bookings/taken-dates` | logged in | dates already requested or confirmed |

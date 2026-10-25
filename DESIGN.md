@@ -62,7 +62,11 @@ and 6 simultaneous bookings and check that exactly one succeeds.
   refuses something.
 - A studio Overview page (sales, items waiting for review, upcoming murals) and a dummy customer
   account in the seed data for quick testing.
-- 22 API tests, including the concurrency cases.
+- A public landing page for visitors who aren't logged in. It shows no prices or availability,
+  because those come from the API, and the API refuses requests without a login (401).
+- The server checks the database before it starts, and explains a wrong `DATABASE_URL`
+  (placeholder password, unreachable host, missing tables) instead of failing on every request.
+- 24 API tests, including the concurrency cases.
 
 **Left out:** the brief's out-of-scope list (payments, password reset, email verification, image
 uploads, which are replaced by an image URL field, deployment). I also didn't build pagination,
@@ -82,5 +86,8 @@ login rate limiting, or deleting paintings, which the brief doesn't ask for.
   DATE columns are read as plain `YYYY-MM-DD` strings so time zones can't shift a booking by a day.
 - **Prices are copied onto orders and bookings** when they are created, so a later change to a
   painting's price or the mural rate doesn't rewrite history.
+- **A purchase carries the price the customer saw.** If the studio changed it in the meantime, the
+  transaction rolls back and the customer gets a 409 with the new price, so nobody pays a price
+  they didn't confirm.
 - **Validation lives on the server.** The forms add hints and limits for convenience, but every
   rule is checked again by the API, which returns per-field messages the forms display.

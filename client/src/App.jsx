@@ -2,8 +2,9 @@ import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router';
 import { useAuth } from './auth.jsx';
 import Brand from './components/Brand.jsx';
 import Icon from './components/Icon.jsx';
-import { Loading } from './components/ui.jsx';
+import { ErrorState, Loading } from './components/ui.jsx';
 import Bookings from './pages/Bookings.jsx';
+import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
 import Orders from './pages/Orders.jsx';
 import PaintingForm from './pages/PaintingForm.jsx';
@@ -77,8 +78,10 @@ function Shell({ children }) {
 }
 
 export default function App() {
-  const { user, checking } = useAuth();
+  const { user, checking, error, retry } = useAuth();
   if (checking) return <main className="main"><div className="content"><Loading label="Starting…" /></div></main>;
+  // If the server can't say who is logged in, say so (with a retry) instead of showing the login page.
+  if (error) return <main className="main"><div className="content"><ErrorState error={error} onRetry={retry} /></div></main>;
 
   const page = (element, role) => <RequireAuth role={role}><Shell>{element}</Shell></RequireAuth>;
 
@@ -86,7 +89,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/signup" element={user ? <Navigate to="/" replace /> : <Signup />} />
-      <Route path="/" element={page(user?.role === 'studio' ? <Dashboard /> : <Paintings />)} />
+      {/* Visitors who aren't logged in get the public landing page at the root. */}
+      <Route path="/" element={user ? page(user.role === 'studio' ? <Dashboard /> : <Paintings />) : <Landing />} />
       <Route path="/paintings" element={page(<Paintings />)} />
       <Route path="/orders" element={page(<Orders />)} />
       <Route path="/bookings" element={page(<Bookings />)} />

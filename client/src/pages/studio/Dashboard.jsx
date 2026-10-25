@@ -19,15 +19,18 @@ function Stat({ icon, label, value, sub }) {
 // The studio's home: headline numbers and everything waiting for a decision.
 export default function Dashboard() {
   const { user } = useAuth();
-  const sources = [useApi('/paintings'), useApi('/orders'), useApi('/bookings'), useApi('/pottery')];
-  const [paintings, orders, bookings, pottery] = sources;
+  const sources = [useApi('/paintings'), useApi('/orders'), useApi('/bookings'), useApi('/pottery'), useApi('/options')];
+  const [paintings, orders, bookings, pottery, options] = sources;
 
-  // One combined loading / error state for the four requests.
+  // One combined loading / error state for the five requests.
   const state = {
     loading: sources.some((s) => s.loading),
     error: sources.find((s) => s.error)?.error ?? null,
     data: sources.every((s) => s.data)
-      ? { paintings: paintings.data.paintings, orders: orders.data.orders, bookings: bookings.data.bookings, pottery: pottery.data.requests }
+      ? {
+          paintings: paintings.data.paintings, orders: orders.data.orders, bookings: bookings.data.bookings,
+          pottery: pottery.data.requests, today: options.data.today,
+        }
       : null,
     reload: () => sources.forEach((s) => s.reload()),
   };
@@ -40,7 +43,8 @@ export default function Dashboard() {
           const placed = d.orders.filter((o) => o.status === 'placed');
           const pendingBookings = d.bookings.filter((b) => b.status === 'requested');
           const pendingPottery = d.pottery.filter((r) => r.status === 'requested');
-          const confirmed = d.bookings.filter((b) => b.status === 'confirmed');
+          // bookings come sorted by date, so the first upcoming one is the next mural
+          const upcoming = d.bookings.filter((b) => b.status === 'confirmed' && b.date >= d.today);
           const available = d.paintings.filter((p) => p.status === 'available').length;
           return (
             <>
@@ -48,9 +52,9 @@ export default function Dashboard() {
                 <Stat icon="rupee" label="Painting sales" value={money(placed.reduce((sum, o) => sum + o.price, 0))}
                   sub={`${placed.length} active order${placed.length === 1 ? '' : 's'}`} />
                 <Stat icon="inbox" label="Waiting for you" value={pendingBookings.length + pendingPottery.length}
-                  sub={`${pendingBookings.length} bookings · ${pendingPottery.length} pottery`} />
-                <Stat icon="calendar" label="Confirmed murals" value={confirmed.length}
-                  sub={confirmed[0] ? `Next: ${niceDate(confirmed[0].date)}` : 'None scheduled'} />
+                  sub={`${pendingBookings.length} booking${pendingBookings.length === 1 ? '' : 's'} · ${pendingPottery.length} pottery`} />
+                <Stat icon="calendar" label="Upcoming murals" value={upcoming.length}
+                  sub={upcoming[0] ? `Next: ${niceDate(upcoming[0].date)}` : 'None scheduled'} />
                 <Stat icon="image" label="Paintings on sale" value={available}
                   sub={`${d.paintings.length - available} sold of ${d.paintings.length}`} />
               </div>

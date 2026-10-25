@@ -43,7 +43,7 @@ export default function Signup() {
           <input type="email" value={form.email} onChange={set('email')} required autoComplete="email" placeholder="you@example.com" />
         </Field>
         <Field label="Password" error={errors.password} hint="At least 8 characters.">
-          <input type="password" value={form.password} onChange={set('password')} required minLength={8} autoComplete="new-password" />
+          <input type="password" value={form.password} onChange={set('password')} required minLength={8} maxLength={100} autoComplete="new-password" />
         </Field>
         <button type="submit" className="block" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
       </form>
