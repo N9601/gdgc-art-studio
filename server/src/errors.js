@@ -21,6 +21,11 @@ export function errorHandler(err, req, res, next) {
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ error: 'The request body is not valid JSON.' });
   }
+  // Express's own body parser and router mark client mistakes (body too large, a badly encoded
+  // URL, an unsupported charset) with a 4xx status. Only a fixed message is sent back.
+  if (err.status >= 400 && err.status < 500) {
+    return res.status(err.status).json({ error: err.status === 413 ? 'The request is too large.' : 'The request is not valid.' });
+  }
   console.error(err);
   res.status(500).json({ error: 'Something went wrong on the server. Please try again.' });
 }

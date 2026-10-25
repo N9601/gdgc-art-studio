@@ -8,6 +8,13 @@ const SESSION_DAYS = 7;
 // so a leaked sessions table cannot be used to log in as anyone.
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
+// The session token from the cookie. Cookies are user input (cookie-parser even turns values
+// starting with "j:" into JSON), so anything that isn't a string counts as no session.
+const readToken = (req) => {
+  const token = req.cookies[SESSION_COOKIE];
+  return typeof token === 'string' && token ? token : null;
+};
+
 export async function startSession(pool, res, userId) {
   const token = crypto.randomBytes(32).toString('hex');
   const expires = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
@@ -20,7 +27,7 @@ export async function startSession(pool, res, userId) {
 }
 
 export async function endSession(pool, req, res) {
-  const token = req.cookies[SESSION_COOKIE];
+  const token = readToken(req);
   if (token) await pool.query('DELETE FROM sessions WHERE token_hash = $1', [hashToken(token)]);
   res.clearCookie(SESSION_COOKIE, { path: '/' });
 }
@@ -29,7 +36,7 @@ export async function endSession(pool, req, res) {
 export function loadUser(pool) {
   return async (req, res, next) => {
     req.user = null;
-    const token = req.cookies[SESSION_COOKIE];
+    const token = readToken(req);
     if (token) {
       const { rows } = await pool.query(
         `SELECT u.id, u.name, u.email, u.role

@@ -25,6 +25,10 @@ describe('login', () => {
     const bad = await request(server.app).post('/api/auth/signup').send({ name: '', email: 'nope', password: 'short' });
     assert.equal(bad.status, 400);
     assert.deepEqual(Object.keys(bad.body.fields).sort(), ['email', 'name', 'password']);
+    const long = await request(server.app).post('/api/auth/signup')
+      .send({ name: 'Long', email: `long-${Date.now()}@test.dev`, password: 'x'.repeat(101) });
+    assert.equal(long.status, 400);
+    assert.match(long.body.error, /at most 100/);
   });
 
   it('rejects a wrong password and logs the studio in with the seed account', async () => {
@@ -103,5 +107,20 @@ describe('role checks', () => {
     assert.equal((await bob.get('/api/orders')).body.orders.length, 0);
     assert.equal((await alice.get('/api/orders')).body.orders.length, 1);
     assert.ok((await studio.get('/api/orders')).body.orders.some((o) => o.id === order.id));
+  });
+});
+
+describe('bad requests', () => {
+  it('answers impossible ids, odd URLs, tampered cookies and huge bodies with 4xx, never 500', async () => {
+    const customer = await newCustomer(server.app);
+    for (const url of ['/api/paintings/2147483648', '/api/orders/1e21', '/api/bookings/abc', '/api/pottery/-1']) {
+      assert.equal((await customer.get(url)).status, 404, url);
+    }
+    await customer.get('/api/paintings/%E0').expect(400); // can't be URL-decoded
+    await customer.post('/api/orders').send({ paintingId: 10_000_000_000 }).expect(400);
+    await customer.post('/api/pottery').send({ notes: 'x'.repeat(200_000) }).expect(413);
+    // cookie-parser turns "j:..." cookies into JSON values; that must read as "not logged in"
+    await request(server.app).get('/api/auth/me').set('Cookie', 'sid=j:1').expect(401);
+    await request(server.app).post('/api/auth/logout').set('Cookie', 'sid=j:{}').expect(204);
   });
 });

@@ -61,6 +61,21 @@ describe('studio managing paintings', () => {
     assert.equal(edited.price, 3500);
   });
 
+  it('refuses to sell at a price the customer did not see', async () => {
+    const studio = await loginStudio(server.app);
+    const customer = await newCustomer(server.app);
+    const painting = (await studio.post('/api/paintings').send({ ...newPainting, price: 4000 }).expect(201)).body.painting;
+    await studio.put(`/api/paintings/${painting.id}`).send({ ...newPainting, price: 40000 }).expect(200);
+
+    const stale = await customer.post('/api/orders').send({ paintingId: painting.id, price: 4000 });
+    assert.equal(stale.status, 409);
+    assert.match(stale.body.error, /price of this painting has just changed/);
+    assert.equal((await customer.get(`/api/paintings/${painting.id}`)).body.painting.status, 'available');
+
+    const order = (await customer.post('/api/orders').send({ paintingId: painting.id, price: 40000 }).expect(201)).body.order;
+    assert.equal(order.price, 40000);
+  });
+
   it('refuses to edit a sold painting, and rejects bad input', async () => {
     const studio = await loginStudio(server.app);
     const res = await studio.put('/api/paintings/9').send(newPainting); // sold in the seed data

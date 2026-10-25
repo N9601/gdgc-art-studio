@@ -20,9 +20,13 @@ export function isIntBetween(value, min, max) {
   return Number.isInteger(value) && value >= min && value <= max;
 }
 
-// Turns the :id in a URL into a number. A non-numeric id can't exist, so it is a 404.
+// Ids are Postgres INT (SERIAL) columns, so nothing above this can exist.
+export const MAX_ID = 2_147_483_647;
+
+// Turns the :id in a URL into a number. An id that can't exist (not plain digits, or too big
+// for the column) is a 404, the same as an id that isn't there.
 export function parseId(value) {
-  const id = Number(value);
-  if (!Number.isInteger(id) || id <= 0) throw notFound();
+  const id = /^\d{1,10}$/.test(value) ? Number(value) : NaN;
+  if (!isIntBetween(id, 1, MAX_ID)) throw notFound();
   return id;
 }

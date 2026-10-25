@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { customerOnly, requireLogin } from '../auth.js';
 import { transaction } from '../db.js';
 import { badRequest, conflict, notFound } from '../errors.js';
-import { parseId } from '../validate.js';
+import { isIntBetween, MAX_ID, parseId } from '../validate.js';
 
 const SELECT_ORDERS = `
   SELECT o.id, o.status, o.price, o.created_at, o.cancelled_at,
@@ -28,9 +28,11 @@ export default function orderRoutes(pool) {
   // Buying = one transaction that flips the painting to 'sold' and creates the order.
   // The UPDATE only matches while status is still 'available', and Postgres locks the row,
   // so if two customers click "Buy" at the same moment exactly one UPDATE succeeds.
+  // `price` is optional: the price the customer saw. If the studio changed it since, nothing is sold.
   router.post('/', customerOnly, async (req, res) => {
-    const paintingId = req.body?.paintingId;
-    if (!Number.isInteger(paintingId)) throw badRequest('Choose a painting to buy.');
+    const { paintingId, price } = req.body ?? {};
+    if (!isIntBetween(paintingId, 1, MAX_ID)) throw badRequest('Choose a painting to buy.');
+    if (price !== undefined && !Number.isInteger(price)) throw badRequest('The price must be a whole number.');
 
     const order = await transaction(pool, async (db) => {
       const sold = await db.query(
@@ -44,9 +46,14 @@ export default function orderRoutes(pool) {
         if (!exists.rows[0]) throw notFound('Painting not found.');
         throw conflict('Sorry, this painting has just been sold. Please pick another one.');
       }
+      // Throwing here rolls the UPDATE back, so the painting stays on sale.
+      const current = sold.rows[0].price;
+      if (price !== undefined && price !== current) {
+        throw conflict(`The price of this painting has just changed to ₹${current.toLocaleString('en-IN')}. Please check it and buy again.`);
+      }
       const { rows } = await db.query(
         'INSERT INTO orders (painting_id, customer_id, price) VALUES ($1, $2, $3) RETURNING id',
-        [paintingId, req.user.id, sold.rows[0].price],
+        [paintingId, req.user.id, current],
       );
       return rows[0];
     });

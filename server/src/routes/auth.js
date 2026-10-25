@@ -18,8 +18,8 @@ export default function authRoutes(pool) {
     assertValid({
       name: name ? null : 'Enter your name.',
       email: email && EMAIL_RE.test(email) ? null : 'Enter a valid email address.',
-      password: typeof password === 'string' && password.length >= 8 && password.length <= 100
-        ? null : 'Use a password of at least 8 characters.',
+      password: typeof password !== 'string' || password.length < 8 ? 'Use a password of at least 8 characters.'
+        : password.length > 100 ? 'Use a password of at most 100 characters.' : null,
     });
 
     const passwordHash = await bcrypt.hash(password, 10);
